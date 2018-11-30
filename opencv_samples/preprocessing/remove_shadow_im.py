@@ -6,6 +6,7 @@ for more detail.
 
 import cv2, sys
 import numpy as np
+from PIL import Image
 
 def remove_shadow_img(img):
 	# img = cv2.imread('shadows.png', -1)
@@ -28,8 +29,32 @@ def remove_shadow_img(img):
 	result_norm = cv2.merge(result_norm_planes)
 	return result_norm
 
+def change_contrast(img, level):
+    factor = (259 * (level + 255)) / (255 * (259 - level))
+
+    def contrast(c):
+        return 128 + factor * (c - 128)
+
+    return img.point(contrast)
+
+
+def increase_contrast(im):
+    pil_im = Image.fromarray(im)
+    return np.array(change_contrast(pil_im, 5))
+
+
+def adjust_gamma(image, gamma=1.0):
+    inv_gamma = 1.0 / gamma
+    table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+    return cv2.LUT(image, table)
+
+def equalize_hist(img):
+    for c in range(0, 2):
+       img[:,:,c] = cv2.equalizeHist(img[:,:,c])
+    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
 
 if __name__ == '__main__':
 	img = cv2.imread(sys.argv[1], -1)
-	removed_shadow_img = remove_shadow_img(img)
+	removed_shadow_img = adjust_gamma(increase_contrast(remove_shadow_img(img)), 0.4)
 	cv2.imwrite(sys.argv[2], removed_shadow_img)
